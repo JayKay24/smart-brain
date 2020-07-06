@@ -9,6 +9,8 @@ import ImageLinkForm from "./components/ImageLinkForm/ImageLinkForm";
 import Rank from "./components/Rank/Rank";
 import Modal from "./components/Modal/Modal";
 import Profile from "./components/Profile/Profile";
+import { fetchUserProfile } from "./utils/utils";
+
 import "./App.css";
 
 const particlesOptions = {
@@ -37,7 +39,7 @@ const initialState = {
     entries: 0,
     joined: "",
     age: "",
-    pet: ""
+    pet: "",
   },
 };
 
@@ -45,6 +47,23 @@ class App extends Component {
   constructor() {
     super();
     this.state = initialState;
+  }
+
+  componentDidMount() {
+    const token = window.sessionStorage.getItem("token");
+    if (token) {
+      fetch("http://localhost:3000/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: token },
+      })
+        .then((resp) => resp.json())
+        .then((data) => {
+          if (data && data.id) {
+            fetchUserProfile(token, data, this.loadUser, this.onRouteChange);
+          }
+        })
+        .catch((err) => console.log(err));
+    }
   }
 
   loadUser = (data) => {
@@ -56,27 +75,32 @@ class App extends Component {
         entries: data.entries,
         joined: data.joined,
         age: data.age,
-        pet: data.pet
+        pet: data.pet,
       },
     });
   };
 
   calculateFaceLocation = (data) => {
-    const clarifaiFace =
-      data.outputs[0].data.regions[0].region_info.bounding_box;
-    const image = document.getElementById("inputimage");
-    const width = Number(image.width);
-    const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - clarifaiFace.right_col * width,
-      bottomRow: height - clarifaiFace.bottom_row * height,
-    };
+    if (data && data.outputs) {
+      const clarifaiFace =
+        data.outputs[0].data.regions[0].region_info.bounding_box;
+      const image = document.getElementById("inputimage");
+      const width = Number(image.width);
+      const height = Number(image.height);
+      return {
+        leftCol: clarifaiFace.left_col * width,
+        topRow: clarifaiFace.top_row * height,
+        rightCol: width - clarifaiFace.right_col * width,
+        bottomRow: height - clarifaiFace.bottom_row * height,
+      };
+    }
+    return;
   };
 
   displayFaceBox = (box) => {
-    this.setState({ box: box });
+    if (box) {
+      this.setState({ box });
+    }
   };
 
   onInputChange = (event) => {
@@ -87,7 +111,10 @@ class App extends Component {
     this.setState({ imageUrl: this.state.input });
     fetch("http://localhost:3000/imageurl", {
       method: "post",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: window.sessionStorage.getItem("token"),
+      },
       body: JSON.stringify({
         input: this.state.input,
       }),
@@ -97,7 +124,10 @@ class App extends Component {
         if (response) {
           fetch("http://localhost:3000/image", {
             method: "put",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: window.sessionStorage.getItem("token"),
+            },
             body: JSON.stringify({
               id: this.state.user.id,
             }),
@@ -130,7 +160,14 @@ class App extends Component {
   };
 
   render() {
-    const { isSignedIn, imageUrl, route, box, isProfileOpen, user } = this.state;
+    const {
+      isSignedIn,
+      imageUrl,
+      route,
+      box,
+      isProfileOpen,
+      user,
+    } = this.state;
     return (
       <div className="App">
         <Particles className="particles" params={particlesOptions} />

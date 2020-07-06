@@ -1,4 +1,6 @@
-import React from 'react';
+import React from "react";
+
+import { fetchUserProfile } from "../../utils/utils";
 
 import "./Signin.css";
 
@@ -6,36 +8,45 @@ class Signin extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      signInEmail: '',
-      signInPassword: ''
-    }
+      signInEmail: "",
+      signInPassword: "",
+    };
   }
 
   onEmailChange = (event) => {
-    this.setState({signInEmail: event.target.value})
-  }
+    this.setState({ signInEmail: event.target.value });
+  };
 
   onPasswordChange = (event) => {
-    this.setState({signInPassword: event.target.value})
-  }
+    this.setState({ signInPassword: event.target.value });
+  };
+
+  saveAuthTokenInSessions = (token) => {
+    window.sessionStorage.setItem("token", token);
+  };
 
   onSubmitSignIn = () => {
-    fetch('http://localhost:3000/signin', {
-      method: 'post',
-      headers: {'Content-Type': 'application/json'},
+    fetch("http://localhost:3000/signin", {
+      method: "post",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: this.state.signInEmail,
-        password: this.state.signInPassword
-      })
+        password: this.state.signInPassword,
+      }),
     })
-      .then(response => response.json())
-      .then(user => {
-        if (user.id) {
-          this.props.loadUser(user)
-          this.props.onRouteChange('home');
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.userId && data.success) {
+          this.saveAuthTokenInSessions(data.token);
+          fetchUserProfile(
+            data.token,
+            data,
+            this.props.loadUser,
+            this.props.onRouteChange
+          );
         }
-      })
-  }
+      });
+  };
 
   render() {
     const { onRouteChange } = this.props;
